@@ -37,33 +37,49 @@ export default function uploadResume() {
     setFiles((prev) => [...prev, ...newFiles]);
   };
 
-  const simulateUpload = (id: string) => {
+ // 1. The real upload function
+  const uploadFileToServer = async (resumeFile: ResumeFile) => {
+    // Set status to uploading and start at 10%
     setFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: "uploading" } : f))
+      prev.map((f) => (f.id === resumeFile.id ? { ...f, status: "uploading", progress: 10 } : f))
     );
 
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 20) + 10;
-      if (progress >= 100) {
-        clearInterval(interval);
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === id ? { ...f, status: "success", progress: 100 } : f
-          )
-        );
-      } else {
-        setFiles((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, progress } : f))
-        );
-      }
-    }, 300);
-  };
+    const formData = new FormData();
+    // 'file' must match the parameter name in your FastAPI route: upload_resume(file: UploadFile)
+    formData.append("file", resumeFile.file);
 
+    try {
+      const response = await fetch("http://127.0.0.1:8000/resumes/upload", {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type header; fetch + FormData handles it automatically
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      console.log("Uploaded ID:", data.id);
+
+      // Success state
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === resumeFile.id ? { ...f, status: "success", progress: 100 } : f
+        )
+      );
+    } catch (error) {
+      console.error("Upload error:", error);
+      setFiles((prev) =>
+        prev.map((f) => (f.id === resumeFile.id ? { ...f, status: "error", progress: 0 } : f))
+      );
+    }
+  };
+  
+
+  // 2. The trigger for the "Upload All" button
   const handleUploadAll = () => {
     files
       .filter((f) => f.status === "idle")
-      .forEach((f) => simulateUpload(f.id));
+      .forEach((f) => uploadFileToServer(f));
   };
 
   const removeFile = (id: string) => {
