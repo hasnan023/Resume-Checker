@@ -20,23 +20,16 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: |
-          cd resume-reader
-          npm install
+        run: npm install
 
       - name: Build App
-        run: |
-          cd resume-reader
-          npm run build
+        run: npm run build
 
       - name: Build Docker Image
-        run: |
-          cd resume-reader
-          docker build -t resume-frontend .
+        run: docker build -t resume-frontend .
 
       - name: Run Container Test
         run: |
-          cd resume-reader
           docker run -d -p 3000:3000 resume-frontend
           sleep 15
           curl -f http://localhost:3000 || exit 1
